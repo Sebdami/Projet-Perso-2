@@ -26,7 +26,7 @@ public class QuickUtilityTools : EditorWindow
 
         - Move objects to the floor level
 
-
+        - Deselect all
 
         - Multiple Tags System ?
     */
@@ -34,13 +34,18 @@ public class QuickUtilityTools : EditorWindow
     GameObject selectedObject = null;
     GameObject[] selectedObjects = null;
 
-    bool errorNoSelection = false;
+    string parentName = "NewParent";
+    bool showParentTools = false;
 
-    [MenuItem("Window/Quick Utility Tools")]
+
+    bool errorNoSelection = false;
+    bool centerPivotPoint = true;
+
+    [MenuItem("Tools/Quick Utility Tools/Open Window")]
     static void Init()
     {
         // Get existing open window or if none, make a new one:
-        QuickUtilityTools window = (QuickUtilityTools)EditorWindow.GetWindow(typeof(QuickUtilityTools));
+        QuickUtilityTools window = (QuickUtilityTools)EditorWindow.GetWindow(typeof(QuickUtilityTools), false, "Quick Utility");
         window.Show();
     }
 
@@ -58,6 +63,8 @@ public class QuickUtilityTools : EditorWindow
 
     void OnGUI()
     {
+        if (selectedObjects == null)
+            OnSelectionChange();
         errorNoSelection = false;
         if (selectedObjects == null || selectedObjects.Length < 1)
             errorNoSelection = true;
@@ -70,12 +77,53 @@ public class QuickUtilityTools : EditorWindow
             SelectOnlyTopLevel();
         }
 
+        if (GUILayout.Button("Select root objects"))
+        {
+            SelectRoots();
+        }
+
+        //showParentTools = GUI.Toggle(new Rect(10, 50, 100, 50), showParentTools, "Parent tools");
+        //GUI.BeginGroup(new Rect(10, 50, 500, 250));
+        //GUI.Box(new Rect(0, 0, 500, 250), "ParentTools");
+        //GUILayout.BeginVertical();
+        parentName = EditorGUILayout.TextField("New parent name", parentName);
+           
+        centerPivotPoint = EditorGUILayout.Toggle("Center parent pivot point", centerPivotPoint);
+        
         if(GUILayout.Button("Make parent"))
         {
             CreateParent();
         }
+        //GUILayout.EndVertical();
+        //GUI.EndGroup();
     }
-    [ContextMenu("Select only Topmost", false)]
+
+    [MenuItem("Tools/Quick Utility Tools/Select only TopLevel %&t")]
+    static void SelectOnlyTopLevelItem()
+    {
+        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+        GameObject[] goSelect = new GameObject[selection.Length];
+        for (int i = 0; i < selection.Length; i++)
+        {
+            goSelect[i] = selection[i] as GameObject;
+        }
+
+        Selection.objects = goSelect;
+    }
+
+    [MenuItem("Tools/Quick Utility Tools/Select Roots %&r")]
+    static void SelectRootsItem()
+    {
+        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+        GameObject[] goSelect = new GameObject[selection.Length];
+        for (int i = 0; i < selection.Length; i++)
+        {
+            goSelect[i] = ((GameObject)selection[i]).transform.root.gameObject;
+        }
+
+        Selection.objects = goSelect;
+    }
+
     void SelectOnlyTopLevel()
     {
         Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
@@ -83,6 +131,18 @@ public class QuickUtilityTools : EditorWindow
         for (int i = 0; i < selection.Length; i++)
         {
             selectedObjects[i] = selection[i] as GameObject;
+        }
+
+        Selection.objects = selectedObjects;
+    }
+
+    void SelectRoots()
+    {
+        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+        selectedObjects = new GameObject[selection.Length];
+        for (int i = 0; i < selection.Length; i++)
+        {
+            selectedObjects[i] = ((GameObject)selection[i]).transform.root.gameObject;
         }
 
         Selection.objects = selectedObjects;
@@ -117,14 +177,42 @@ public class QuickUtilityTools : EditorWindow
 
     void CreateParent()
     {
-        
-        GameObject parent = new GameObject("NewParent");
+        GameObject parent = new GameObject(parentName);
+        if(centerPivotPoint)
+            parent.transform.position = FindSelectionCenter();
+
         Undo.RegisterCreatedObjectUndo(parent, "CreatedParent");
         parent.transform.SetParent(FindClosestToRootSelectedGameObject().transform.parent);
         for (int i = 0; i < selectedObjects.Length; i++)
         {
             Undo.SetTransformParent(selectedObjects[i].transform, parent.transform, "SetParent" + i);
         }
+        Selection.activeObject = parent;
+    }
+
+    Vector3 FindSelectionCenter()
+    {
+        Vector3 center = Vector3.zero;
+        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.Deep | SelectionMode.ExcludePrefab);
+        GameObject[] goSelection = new GameObject[selection.Length];
+        for (int i = 0; i < selection.Length; i++)
+        {
+            goSelection[i] = selection[i] as GameObject;
+        }
+
+
+        for (int i = 0; i < goSelection.Length; i++)
+        {
+            center += goSelection[i].transform.position;
+        }
+        center /= goSelection.Length;
+
+        return center;
+    }
+
+    void MoveToFloor()
+    {
+
     }
 
 }
