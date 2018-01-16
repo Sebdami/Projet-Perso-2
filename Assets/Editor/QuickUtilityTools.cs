@@ -72,7 +72,7 @@ public class QuickUtilityTools : EditorWindow
         if(errorNoSelection)
             GUI.enabled = false;
 
-        if(GUILayout.Button("Select only TopLevel"))
+        /*if(GUILayout.Button("Select only TopLevel"))
         {
             SelectOnlyTopLevelItem();
         }
@@ -84,13 +84,18 @@ public class QuickUtilityTools : EditorWindow
 
         if (GUILayout.Button("Select all children"))
         {
+            SelectChildrenOnlyItem();
+        }
+
+        if (GUILayout.Button("Select object with children"))
+        {
             SelectChildrenItem();
         }
 
         if (GUILayout.Button("Select parents"))
         {
             SelectParentsItem();
-        }
+        }*/
         //showParentTools = GUI.Toggle(new Rect(10, 50, 100, 50), showParentTools, "Parent tools");
         //GUI.BeginGroup(new Rect(10, 50, 500, 250));
         //GUI.Box(new Rect(0, 0, 500, 250), "ParentTools");
@@ -134,8 +139,8 @@ public class QuickUtilityTools : EditorWindow
         Selection.objects = goSelect;
     }
 
-    [MenuItem("Tools/Quick Utility Tools/Selection/Select All Children _c")]
-    static void SelectChildrenItem()
+    [MenuItem("Tools/Quick Utility Tools/Selection/Select All Children Only _c")]
+    static void SelectChildrenOnlyItem()
     {
         Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
         List<GameObject> goList = new List<GameObject>();
@@ -149,7 +154,23 @@ public class QuickUtilityTools : EditorWindow
         }
         Selection.objects = goList.ToArray();
     }
-    [MenuItem("Tools/Quick Utility Tools/Selection/Select All Parents _x")]
+    [MenuItem("Tools/Quick Utility Tools/Selection/Select Object and Children _b")]
+    static void SelectChildrenItem()
+    {
+        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+        List<GameObject> goList = new List<GameObject>();
+        for (int i = 0; i < selection.Length; i++)
+        {
+            Transform childTransform = ((GameObject)selection[i]).transform;
+            goList.Add(childTransform.gameObject);
+            for (int j = 0; j < childTransform.transform.childCount; j++)
+            {
+                goList.Add(childTransform.GetChild(j).gameObject);
+            }
+        }
+        Selection.objects = goList.ToArray();
+    }
+    [MenuItem("Tools/Quick Utility Tools/Selection/Select Parents _x")]
     static void SelectParentsItem()
     {
         Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
