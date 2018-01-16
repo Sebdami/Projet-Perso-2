@@ -12,21 +12,21 @@ public class QuickUtilityTools : EditorWindow
 
         - Hide some objects in editor view (Special button for canvases)
 
-        - Create a new shared parent for the selected objects
+        v- Create a new shared parent for the selected objects
 
-        - Recenter parent from children positions
+        o- Recenter parent from children positions
 
-        - Select all children
+        v- Select all children
 
         - Rename children
 
-        - Select parents
+        v- Select parents
 
         - Fix children movement (Allows to move parent without moving children when enabled)
 
         - Move objects to the floor level
 
-        - Deselect all
+        v- Deselect all
 
         - Multiple Tags System ?
     */
@@ -41,7 +41,7 @@ public class QuickUtilityTools : EditorWindow
     bool errorNoSelection = false;
     bool centerPivotPoint = true;
 
-    [MenuItem("Tools/Quick Utility Tools/Open Window")]
+    [MenuItem("Tools/Quick Utility Tools/Open Window", priority = 1)]
     static void Init()
     {
         // Get existing open window or if none, make a new one:
@@ -74,14 +74,23 @@ public class QuickUtilityTools : EditorWindow
 
         if(GUILayout.Button("Select only TopLevel"))
         {
-            SelectOnlyTopLevel();
+            SelectOnlyTopLevelItem();
         }
 
         if (GUILayout.Button("Select root objects"))
         {
-            SelectRoots();
+            SelectRootsItem();
         }
 
+        if (GUILayout.Button("Select all children"))
+        {
+            SelectChildrenItem();
+        }
+
+        if (GUILayout.Button("Select parents"))
+        {
+            SelectParentsItem();
+        }
         //showParentTools = GUI.Toggle(new Rect(10, 50, 100, 50), showParentTools, "Parent tools");
         //GUI.BeginGroup(new Rect(10, 50, 500, 250));
         //GUI.Box(new Rect(0, 0, 500, 250), "ParentTools");
@@ -94,11 +103,12 @@ public class QuickUtilityTools : EditorWindow
         {
             CreateParent();
         }
+
         //GUILayout.EndVertical();
         //GUI.EndGroup();
     }
 
-    [MenuItem("Tools/Quick Utility Tools/Select only TopLevel %&t")]
+    [MenuItem("Tools/Quick Utility Tools/Selection/Select only TopLevel %t")]
     static void SelectOnlyTopLevelItem()
     {
         Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
@@ -111,7 +121,7 @@ public class QuickUtilityTools : EditorWindow
         Selection.objects = goSelect;
     }
 
-    [MenuItem("Tools/Quick Utility Tools/Select Roots %&r")]
+    [MenuItem("Tools/Quick Utility Tools/Selection/Select Roots %h")]
     static void SelectRootsItem()
     {
         Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
@@ -124,29 +134,82 @@ public class QuickUtilityTools : EditorWindow
         Selection.objects = goSelect;
     }
 
-    void SelectOnlyTopLevel()
+    [MenuItem("Tools/Quick Utility Tools/Selection/Select All Children _c")]
+    static void SelectChildrenItem()
     {
-        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
-        selectedObjects = new GameObject[selection.Length];
+        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+        List<GameObject> goList = new List<GameObject>();
         for (int i = 0; i < selection.Length; i++)
         {
-            selectedObjects[i] = selection[i] as GameObject;
+            Transform childTransform = ((GameObject)selection[i]).transform;
+            for (int j = 0; j < childTransform.transform.childCount; j++)
+            {
+                goList.Add(childTransform.GetChild(j).gameObject);
+            }
         }
-
-        Selection.objects = selectedObjects;
+        Selection.objects = goList.ToArray();
     }
-
-    void SelectRoots()
+    [MenuItem("Tools/Quick Utility Tools/Selection/Select All Parents _x")]
+    static void SelectParentsItem()
     {
-        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
-        selectedObjects = new GameObject[selection.Length];
+        Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+        List<GameObject> goList = new List<GameObject>();
         for (int i = 0; i < selection.Length; i++)
         {
-            selectedObjects[i] = ((GameObject)selection[i]).transform.root.gameObject;
+            if (((GameObject)selection[i]).transform.parent == null)
+                continue;
+            GameObject toAdd = ((GameObject)selection[i]).transform.parent.gameObject;
+            if (!goList.Contains(toAdd))
+                goList.Add(toAdd);
         }
-
-        Selection.objects = selectedObjects;
+        Selection.objects = goList.ToArray();
     }
+
+    [MenuItem("Tools/Quick Utility Tools/Selection/Deselect All %g")]
+    static void DeselectAll()
+    {
+        Selection.objects = new Object[0];
+    }
+
+    //void SelectOnlyTopLevel()
+    //{
+    //    Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+    //    selectedObjects = new GameObject[selection.Length];
+    //    for (int i = 0; i < selection.Length; i++)
+    //    {
+    //        selectedObjects[i] = selection[i] as GameObject;
+    //    }
+
+    //    Selection.objects = selectedObjects;
+    //}
+
+    //void SelectRoots()
+    //{
+    //    Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+    //    selectedObjects = new GameObject[selection.Length];
+    //    for (int i = 0; i < selection.Length; i++)
+    //    {
+    //        selectedObjects[i] = ((GameObject)selection[i]).transform.root.gameObject;
+    //    }
+
+    //    Selection.objects = selectedObjects;
+    //}
+
+    //void SelectChildren()
+    //{
+    //    Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+    //    List<GameObject> goList = new List<GameObject>();
+    //    for (int i = 0; i < selection.Length; i++)
+    //    {
+    //        Transform childTransform = ((GameObject)selection[i]).transform;
+    //        for (int j = 0; j < childTransform.transform.childCount; j++)
+    //        {
+    //            goList.Add(childTransform.GetChild(j).gameObject);
+    //        }
+    //    }
+    //    selectedObjects = goList.ToArray();
+    //    Selection.objects = selectedObjects;
+    //}
 
     GameObject FindClosestToRootSelectedGameObject()
     {
