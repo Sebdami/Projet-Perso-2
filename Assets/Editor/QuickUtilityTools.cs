@@ -337,8 +337,9 @@ namespace QuickUtility
             GameObject parent = new GameObject("Parent");
 
             Undo.RegisterCreatedObjectUndo(parent, "CreatedParent");
-            parent.transform.SetParent(FindClosestToRootSelectedGameObjectStatic(selectedObjects).transform.parent);
-            
+            GameObject closestToRoot = FindClosestToRootSelectedGameObjectStatic(selectedObjects);
+            parent.transform.SetParent(closestToRoot.transform.parent);
+            parent.transform.SetSiblingIndex(closestToRoot.transform.GetSiblingIndex());
             for (int i = 0; i < selectedObjects.Length; i++)
             {
                 Undo.SetTransformParent(selectedObjects[i].transform, parent.transform, "SetParent" + i);
@@ -353,7 +354,9 @@ namespace QuickUtility
                 parent.transform.position = FindSelectionCenter();
 
             Undo.RegisterCreatedObjectUndo(parent, "CreatedParent");
-            parent.transform.SetParent(FindClosestToRootSelectedGameObject().transform.parent);
+            GameObject closestToRoot = FindClosestToRootSelectedGameObject();
+            parent.transform.SetParent(closestToRoot.transform.parent);
+            parent.transform.SetSiblingIndex(closestToRoot.transform.GetSiblingIndex());
             for (int i = 0; i < selectedObjects.Length; i++)
             {
                 Undo.SetTransformParent(selectedObjects[i].transform, parent.transform, "SetParent" + i);
