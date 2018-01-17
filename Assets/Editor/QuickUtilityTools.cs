@@ -31,6 +31,14 @@ namespace QuickUtility
             v- Deselect all
 
             - Multiple Tags System ?
+
+            - Clear parent
+
+            - Apply changes to prefab
+
+            - Break prefab instance?
+
+            - Set as first / last sibling
         */
 
         GameObject selectedObject = null;
