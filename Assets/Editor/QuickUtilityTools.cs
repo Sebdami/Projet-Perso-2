@@ -130,6 +130,7 @@ namespace QuickUtility
         {
             if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)" && EditorWindow.focusedWindow.ToString() != " (QuickUtility.QuickUtilityTools)") //The space before the name is needed
                 return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
             GameObject[] goSelect = new GameObject[selection.Length];
             for (int i = 0; i < selection.Length; i++)
@@ -145,6 +146,7 @@ namespace QuickUtility
         {
             if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
                 return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
             GameObject[] goSelect = new GameObject[selection.Length];
             for (int i = 0; i < selection.Length; i++)
@@ -160,6 +162,7 @@ namespace QuickUtility
         {
             if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
                 return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
             List<GameObject> goList = new List<GameObject>();
             for (int i = 0; i < selection.Length; i++)
@@ -177,6 +180,7 @@ namespace QuickUtility
         {
             if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
                 return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
             List<GameObject> goList = new List<GameObject>();
             for (int i = 0; i < selection.Length; i++)
@@ -195,6 +199,7 @@ namespace QuickUtility
         {
             if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
                 return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
             List<GameObject> goList = new List<GameObject>();
             for (int i = 0; i < selection.Length; i++)
