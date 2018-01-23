@@ -27,6 +27,38 @@ public class TransformInspector : Editor
     private SerializedProperty rotationProperty;
     private SerializedProperty scaleProperty;
 
+    Transform transform;
+    bool freezeChildren = false;
+    public bool FreezeChildren
+    {
+        get
+        {
+            return freezeChildren;
+        }
+        set
+        {
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                GameObject child = transform.GetChild(i).gameObject;
+                if (value)
+                {
+                    if(!child.GetComponent<TransformLocker>())
+                        child.AddComponent<TransformLocker>();
+                }
+                else
+                {
+                    if (child.GetComponent<TransformLocker>())
+                    {
+                        DestroyImmediate(child.GetComponent<TransformLocker>()); //Problem with undo
+                    }
+                        
+                }
+            }
+                
+            freezeChildren = value;
+        }
+    }
+
     private static string LocalString(string text)
     {
         return LocalizationDatabase.GetLocalizedString(text);
@@ -37,6 +69,7 @@ public class TransformInspector : Editor
         this.positionProperty = this.serializedObject.FindProperty("m_LocalPosition");
         this.rotationProperty = this.serializedObject.FindProperty("m_LocalRotation");
         this.scaleProperty = this.serializedObject.FindProperty("m_LocalScale");
+        transform = (Transform)serializedObject.targetObject;
     }
 
     public override void OnInspectorGUI()
@@ -54,8 +87,16 @@ public class TransformInspector : Editor
         {
             EditorGUILayout.HelpBox(positionWarningText, MessageType.Warning);
         }
-
+        if(transform.childCount > 0 && !serializedObject.isEditingMultipleObjects)
+            FreezeChildren = EditorGUILayout.Toggle("Freeze Children", FreezeChildren);
         this.serializedObject.ApplyModifiedProperties();
+    }
+
+    private void OnDisable()
+    {
+        // Disable FreezeChildren on Deselection to prevent confusion if forgotten
+        if(FreezeChildren)
+            FreezeChildren = false;
     }
 
     private bool ValidatePosition(Vector3 position)

@@ -109,12 +109,16 @@ namespace QuickUtility
             {
                 CreateParent();
             }
-            //obj = EditorGUILayout.ObjectField("Object to extract methods from", obj, typeof(Object), true);
-            //obj = this;
-            //if(GUILayout.Button("Log methods"))
-            //{
-            //    getMethodsOn(obj);
-            //}
+            obj = EditorGUILayout.ObjectField("Object to extract methods from", obj, typeof(Transform), true);
+            // obj = null;
+            if (GUILayout.Button("Log methods"))
+            {
+                getMethodsOn(obj);
+            }
+            if (GUILayout.Button("Log members"))
+            {
+                getMembersOf(obj);
+            }
         }
 
         [MenuItem("Tools/Quick Utility Tools/Selection/Select only TopLevel %t")]
@@ -435,7 +439,6 @@ namespace QuickUtility
         {
             Type obj = t.GetType();
             string log = "METHODS FOR : " + obj.Name;
-
             MethodInfo[] method_info = obj.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             foreach (MethodInfo method in method_info)
             {
@@ -451,6 +454,18 @@ namespace QuickUtility
                     }
                 }
                 log += "\nFunction :" + method.Name + "(" + parameters + ")";
+            }
+            Debug.Log(log);
+        }
+
+        static void getMembersOf(System.Object t)
+        {
+            Type obj = t.GetType();
+            string log = "MEMBERS OF : " + obj.Name;
+            MemberInfo[] member_info = obj.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            foreach (MemberInfo member in member_info)
+            {
+                log += "\nMember :" + member.Name;
             }
             Debug.Log(log);
         }
