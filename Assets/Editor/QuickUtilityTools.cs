@@ -2,11 +2,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using System;
+using System.Reflection;
+
+using Object = UnityEngine.Object;
+
 namespace QuickUtility
 {
     public class QuickUtilityTools : EditorWindow
     {
-
         /*
             Planned Tools:
 
@@ -40,6 +44,8 @@ namespace QuickUtility
 
             - Set as first / last sibling
         */
+
+        Object obj;
 
         GameObject selectedObject = null;
         GameObject[] selectedObjects = null;
@@ -82,47 +88,33 @@ namespace QuickUtility
             if (errorNoSelection)
                 GUI.enabled = false;
 
-            /*if(GUILayout.Button("Select only TopLevel"))
-            {
-                SelectOnlyTopLevelItem();
-            }
+            //if (Tools.current == Tool.Move)
+            //{
+            //    Debug.Log("coucou2");
+            //    if (Selection.gameObjects.Length == 2)
+            //        if (Input.GetKey(KeyCode.LeftAlt) && Input.GetMouseButton(0))
+            //        {
+            //            Debug.Log("coucou3");
+            //            Selection.gameObjects[1].transform.position = 2 * Tools.handlePosition;
+            //        }
+            //}
 
-            if (GUILayout.Button("Select root objects"))
-            {
-                SelectRootsItem();
-            }
-
-            if (GUILayout.Button("Select all children"))
-            {
-                SelectChildrenOnlyItem();
-            }
-
-            if (GUILayout.Button("Select object with children"))
-            {
-                SelectChildrenItem();
-            }
-
-            if (GUILayout.Button("Select parents"))
-            {
-                SelectParentsItem();
-            }*/
-            //showParentTools = GUI.Toggle(new Rect(10, 50, 100, 50), showParentTools, "Parent tools");
-            //GUI.BeginGroup(new Rect(10, 50, 500, 250));
-            //GUI.Box(new Rect(0, 0, 500, 250), "ParentTools");
-            //GUILayout.BeginVertical();
             string currentWindow = focusedWindow.ToString();
             GUILayout.Label(currentWindow);
             parentName = EditorGUILayout.TextField("New parent name", parentName);
 
             centerPivotPoint = EditorGUILayout.Toggle("Center parent pivot point", centerPivotPoint);
 
-            if (GUILayout.Button("Make parent"))
+            if (GUILayout.Button("Create parent"))
             {
                 CreateParent();
             }
-
-            //GUILayout.EndVertical();
-            //GUI.EndGroup();
+            //obj = EditorGUILayout.ObjectField("Object to extract methods from", obj, typeof(Object), true);
+            //obj = this;
+            //if(GUILayout.Button("Log methods"))
+            //{
+            //    getMethodsOn(obj);
+            //}
         }
 
         [MenuItem("Tools/Quick Utility Tools/Selection/Select only TopLevel %t")]
@@ -317,7 +309,9 @@ namespace QuickUtility
 
             return closestObjectFromRoot;
         }
-        [MenuItem("GameObject/Create Parent", true)]
+
+        // ---------- Create parent ----------
+        [MenuItem("GameObject/ Create Parent", true)]
         static bool ValidateCreateParentItem()
         {
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
@@ -325,11 +319,17 @@ namespace QuickUtility
                 return false;
             return true;
         }
-
-        [MenuItem("GameObject/Create Parent", false, 0)]
-        static void CreateParentItem()
+        [MenuItem("GameObject/ Create Parent", false, 0)]
+        static void CreateParentItem(MenuCommand menuCommand)
         {
-
+            // Only execute once, not for each object
+            if (Selection.objects.Length > 1)
+            {
+                if (menuCommand.context != Selection.objects[0])
+                {
+                    return;
+                }
+            }
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
             if (selection == null || selection.Length == 0)
                 return;
@@ -350,6 +350,43 @@ namespace QuickUtility
                 Undo.SetTransformParent(selectedObjects[i].transform, parent.transform, "SetParent" + i);
             }
             Selection.activeObject = parent;
+        }
+        // -----------------------------------
+
+        // ---------- Clear parent ----------
+        [MenuItem("GameObject/ Clear Parent", true)]
+        static bool ValidateClearParentItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return false;
+            return true;
+        }
+
+        [MenuItem("GameObject/ Clear Parent", false, 0)]
+        static void ClearParentItem()
+        {
+            EditorApplication.ExecuteMenuItem("GameObject/Clear Parent");
+        }
+        // ----------------------------------
+
+        [MenuItem("GameObject/ Center On Children", true)]
+        static bool ValidateCenterOnChildrenItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return false;
+            for(int i = 0; i < selection.Length; i++)
+            {
+                if (((GameObject)selection[i]).transform.childCount > 0)
+                    return true;
+            }
+            return false;
+        }
+        [MenuItem("GameObject/ Center On Children", false, 0)]
+        static void CenterOnChildrenItem()
+        {
+            EditorApplication.ExecuteMenuItem("GameObject/Center On Children");
         }
 
         void CreateParent()
@@ -392,6 +429,30 @@ namespace QuickUtility
         void MoveToFloor()
         {
 
+        }
+
+        static void getMethodsOn(System.Object t)
+        {
+            Type obj = t.GetType();
+            string log = "METHODS FOR : " + obj.Name;
+
+            MethodInfo[] method_info = obj.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            foreach (MethodInfo method in method_info)
+            {
+                string parameters = "";
+
+                ParameterInfo[] param_info = method.GetParameters();
+                if (0 < param_info.Length)
+                {
+                    for (int i = 0; i < param_info.Length; i++)
+                    {
+                        parameters += param_info[i].ParameterType.Name;
+                        parameters += (i < (param_info.Length - 1)) ? ", " : "";
+                    }
+                }
+                log += "\nFunction :" + method.Name + "(" + parameters + ")";
+            }
+            Debug.Log(log);
         }
 
     }
