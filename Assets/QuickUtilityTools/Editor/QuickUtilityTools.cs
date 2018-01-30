@@ -88,17 +88,6 @@ namespace QuickUtility
             if (errorNoSelection)
                 GUI.enabled = false;
 
-            //if (Tools.current == Tool.Move)
-            //{
-            //    Debug.Log("coucou2");
-            //    if (Selection.gameObjects.Length == 2)
-            //        if (Input.GetKey(KeyCode.LeftAlt) && Input.GetMouseButton(0))
-            //        {
-            //            Debug.Log("coucou3");
-            //            Selection.gameObjects[1].transform.position = 2 * Tools.handlePosition;
-            //        }
-            //}
-
             string currentWindow = focusedWindow.ToString();
             GUILayout.Label(currentWindow);
             parentName = EditorGUILayout.TextField("New parent name", parentName);
@@ -348,12 +337,14 @@ namespace QuickUtility
             Undo.RegisterCreatedObjectUndo(parent, "CreatedParent");
             GameObject closestToRoot = FindClosestToRootSelectedGameObjectStatic(selectedObjects);
             parent.transform.SetParent(closestToRoot.transform.parent);
+            parent.transform.position = selectedObjects[0].transform.position;
             parent.transform.SetSiblingIndex(closestToRoot.transform.GetSiblingIndex());
             for (int i = 0; i < selectedObjects.Length; i++)
             {
                 Undo.SetTransformParent(selectedObjects[i].transform, parent.transform, "SetParent" + i);
             }
             Selection.activeObject = parent;
+
         }
         // -----------------------------------
 
@@ -374,7 +365,7 @@ namespace QuickUtility
         }
         // ----------------------------------
 
-        [MenuItem("GameObject/ Center On Children", true)]
+        [MenuItem("GameObject/ Center On.../Immediate Children", true)]
         static bool ValidateCenterOnChildrenItem()
         {
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
@@ -387,8 +378,27 @@ namespace QuickUtility
             }
             return false;
         }
-        [MenuItem("GameObject/ Center On Children", false, 0)]
+        [MenuItem("GameObject/ Center On.../Immediate Children", false, 0)]
         static void CenterOnChildrenItem()
+        {
+            EditorApplication.ExecuteMenuItem("GameObject/Center On Children");
+        }
+
+        [MenuItem("GameObject/ Center On.../All Children", true)]
+        static bool ValidateCenterOnAllChildrenItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return false;
+            for (int i = 0; i < selection.Length; i++)
+            {
+                if (((GameObject)selection[i]).transform.childCount > 0)
+                    return true;
+            }
+            return false;
+        }
+        [MenuItem("GameObject/ Center On.../All Children", false, 0)]
+        static void CenterOnAllChildrenItem()
         {
             EditorApplication.ExecuteMenuItem("GameObject/Center On Children");
         }
@@ -396,8 +406,7 @@ namespace QuickUtility
         void CreateParent()
         {
             GameObject parent = new GameObject(parentName);
-            if (centerPivotPoint)
-                parent.transform.position = FindSelectionCenter();
+           
 
             Undo.RegisterCreatedObjectUndo(parent, "CreatedParent");
             GameObject closestToRoot = FindClosestToRootSelectedGameObject();
@@ -407,7 +416,27 @@ namespace QuickUtility
             {
                 Undo.SetTransformParent(selectedObjects[i].transform, parent.transform, "SetParent" + i);
             }
+
             Selection.activeObject = parent;
+
+            if (centerPivotPoint)
+            {
+                Vector3 pos = FindCenterOfChildren(parent);
+                GameObject temp = new GameObject("temp");
+                foreach(Transform child in parent.transform)
+                {
+                    child.SetParent(temp.transform);
+                }
+                parent.transform.position = pos;
+                foreach (Transform child in temp.transform)
+                {
+                    child.SetParent(parent.transform);
+                }
+                DestroyImmediate(temp);
+            }
+                
+            //if (centerPivotPoint)
+            //    CenterOnChildrenItem();
         }
 
         Vector3 FindSelectionCenter()
@@ -428,6 +457,32 @@ namespace QuickUtility
             center /= goSelection.Length;
 
             return center;
+        }
+
+        Vector3 FindCenterOfChildren(GameObject go)
+        {
+            Vector4 toReturn = Vector4.zero;
+            for (int i = 0; i < go.transform.childCount; i++)
+            {
+                Transform child = go.transform.GetChild(i);
+                toReturn += new Vector4(child.position.x, child.position.y, child.position.z);
+                toReturn += FindCenterOfChildren4(child.gameObject);
+            }
+
+            return toReturn /= toReturn.w;
+        }
+
+        Vector4 FindCenterOfChildren4(GameObject go)
+        {
+            Vector4 toReturn = Vector4.zero;
+            for(int i = 0; i < go.transform.childCount; i++)
+            {
+                Transform child = go.transform.GetChild(i);
+                toReturn += new Vector4(child.position.x, child.position.y, child.position.z, 1);
+                toReturn += FindCenterOfChildren4(child.gameObject);
+            }
+
+            return toReturn;
         }
 
         void MoveToFloor()
