@@ -42,6 +42,7 @@ public class TransformInspector : Editor
                 GameObject child = transform.GetChild(i).gameObject;
                 if (value)
                 {
+                    Undo.RegisterCompleteObjectUndo(child, "FreezeChild" + i);
                     if(!child.GetComponent<TransformLocker>())
                         child.AddComponent<TransformLocker>();
                 }
@@ -54,7 +55,7 @@ public class TransformInspector : Editor
                         
                 }
             }
-                
+            Undo.FlushUndoRecordObjects();
             freezeChildren = value;
         }
     }
