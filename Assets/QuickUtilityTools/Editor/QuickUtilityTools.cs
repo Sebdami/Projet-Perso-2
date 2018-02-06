@@ -30,7 +30,7 @@ namespace QuickUtility
 
             v- Fix children movement (Allows to move parent without moving children when enabled)
 
-            - Move objects to the floor level
+            v- Move objects to the floor level
 
             v- Deselect all
 
@@ -389,6 +389,9 @@ namespace QuickUtility
             }
             Selection.activeObject = parent;
 
+            EditorApplication.ExecuteMenuItem("GameObject/ Center On.../All Children");
+
+            Selection.objects = selection;
         }
         // -----------------------------------
 
