@@ -101,8 +101,20 @@ namespace QuickUtility
             {
                 Debug.Log(getMembersOf(obj));
             }
+
+            if(GUILayout.Button("Print children and parent"))
+            {
+                for(int i = 0; i < selectedObjects.Length; i++)
+                {
+                    GameObject[] goList = GetGameObjectWithAllChildren(selectedObjects[i]);
+                    for (int j = 0; j < goList.Length; j++)
+                        Debug.Log(goList[j].name);
+                }
+                    
+            }
         }
 
+        #region SelectionHotkeyMenuItems
         [MenuItem("Tools/Quick Utility Tools/Selection/Select only TopLevel %t")]
         static void SelectOnlyTopLevelItem()
         {
@@ -196,66 +208,146 @@ namespace QuickUtility
         {
             Selection.objects = new Object[0];
         }
+        #endregion
 
-        static GameObject FindClosestToRootSelectedGameObjectStatic(GameObject[] selectedObjects)
+        #region SelectionContextMenu
+        [MenuItem("GameObject/Selections/Select Whole Object", false, -10)]
+        static void SelectWholeContextItem()
         {
-            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
-            selectedObjects = new GameObject[selection.Length];
+            if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)" && EditorWindow.focusedWindow.ToString() != " (QuickUtility.QuickUtilityTools)") //The space before the name is needed
+                return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+            GameObject[] goSelect = new GameObject[selection.Length];
             for (int i = 0; i < selection.Length; i++)
             {
-                selectedObjects[i] = selection[i] as GameObject;
+                goSelect[i] = selection[i] as GameObject;
             }
+            List<GameObject> rootObjects = new List<GameObject>();
 
-            int smallestDistanceFromRoot = 10000;
-            GameObject closestObjectFromRoot = null;
-            GameObject currentObject = null;
-            int currentDistance = 0;
-            for (int i = 0; i < selectedObjects.Length; i++)
+            for (int i = 0; i < goSelect.Length; i++)
             {
-                currentObject = selectedObjects[i];
-                currentDistance = 0;
-                while (currentObject.transform.parent != null)
-                {
-                    currentDistance++;
-                    currentObject = currentObject.transform.parent.gameObject;
-                }
-                if (currentDistance < smallestDistanceFromRoot)
-                {
-                    smallestDistanceFromRoot = currentDistance;
-                    closestObjectFromRoot = selectedObjects[i];
-                }
+                if (!rootObjects.Contains(goSelect[i].transform.root.gameObject))
+                    rootObjects.Add(goSelect[i].transform.root.gameObject);
             }
 
-            return closestObjectFromRoot;
+            List<GameObject> goList = new List<GameObject>();
+            for (int i = 0; i < rootObjects.Count; i++)
+            {
+                goList.AddRange(GetGameObjectWithAllChildren(rootObjects[i]));
+            }
+            Selection.objects = goList.ToArray();
         }
 
-        GameObject FindClosestToRootSelectedGameObject()
+        [MenuItem("GameObject/Selections/Select Object With All Children", false, -10)]
+        static void SelectChildrenAndObjectContextItem()
         {
-            if (selectedObjects == null || selectedObjects.Length == 0)
-                return null;
-            int smallestDistanceFromRoot = 10000;
-            GameObject closestObjectFromRoot = null;
-            GameObject currentObject = null;
-            int currentDistance = 0;
-            for (int i = 0; i < selectedObjects.Length; i++)
+            if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)" && EditorWindow.focusedWindow.ToString() != " (QuickUtility.QuickUtilityTools)") //The space before the name is needed
+                return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+            GameObject[] goSelect = new GameObject[selection.Length];
+            for (int i = 0; i < selection.Length; i++)
             {
-                currentObject = selectedObjects[i];
-                currentDistance = 0;
-                while (currentObject.transform.parent != null)
-                {
-                    currentDistance++;
-                    currentObject = currentObject.transform.parent.gameObject;
-                }
-                if (currentDistance < smallestDistanceFromRoot)
-                {
-                    smallestDistanceFromRoot = currentDistance;
-                    closestObjectFromRoot = selectedObjects[i];
-                }
+                goSelect[i] = selection[i] as GameObject;
             }
-
-            return closestObjectFromRoot;
+            List<GameObject> goList = new List<GameObject>();
+            for(int i = 0; i < goSelect.Length; i++)
+            {
+                goList.AddRange(GetGameObjectWithAllChildren(goSelect[i]));
+            }
+            Selection.objects = goList.ToArray();
         }
 
+        [MenuItem("GameObject/Selections/Select All Children Only", false, -10)]
+        static void SelectAllChildrenContextItem()
+        {
+            if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
+                return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+            GameObject[] goSelect = new GameObject[selection.Length];
+            for (int i = 0; i < selection.Length; i++)
+            {
+                goSelect[i] = ((GameObject)selection[i]).transform.root.gameObject;
+            }
+            List<GameObject> goList = new List<GameObject>();
+
+            for (int i = 0; i < goSelect.Length; i++)
+            {
+                List<GameObject> gl = new List<GameObject>();
+                gl.AddRange(GetGameObjectWithAllChildren(goSelect[i]));
+                gl.RemoveAt(0);
+                goList.AddRange(gl);
+            }
+
+            Selection.objects = goList.ToArray();
+        }
+
+        [MenuItem("GameObject/Selections/Select Direct Children Only", false, -10)]
+        static void SelectDirectChildrenContextItem()
+        {
+            if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
+                return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            List<GameObject> goList = new List<GameObject>();
+            for (int i = 0; i < selection.Length; i++)
+            {
+                Transform childTransform = ((GameObject)selection[i]).transform;
+                for (int j = 0; j < childTransform.transform.childCount; j++)
+                {
+                    goList.Add(childTransform.GetChild(j).gameObject);
+                }
+            }
+            Selection.objects = goList.ToArray();
+        }
+        [MenuItem("GameObject/Selections/Select Object and Direct Children", false, -10)]
+        static void SelectObjectAndChildrenContextItem()
+        {
+            if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
+                return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            List<GameObject> goList = new List<GameObject>();
+            for (int i = 0; i < selection.Length; i++)
+            {
+                Transform childTransform = ((GameObject)selection[i]).transform;
+                goList.Add(childTransform.gameObject);
+                for (int j = 0; j < childTransform.transform.childCount; j++)
+                {
+                    goList.Add(childTransform.GetChild(j).gameObject);
+                }
+            }
+            Selection.objects = goList.ToArray();
+        }
+        [MenuItem("GameObject/Selections/Select Parent", false, -10)]
+        static void SelectParentsContextItem()
+        {
+            if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
+                return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            List<GameObject> goList = new List<GameObject>();
+            for (int i = 0; i < selection.Length; i++)
+            {
+                if (((GameObject)selection[i]).transform.parent == null)
+                    continue;
+                GameObject toAdd = ((GameObject)selection[i]).transform.parent.gameObject;
+                if (!goList.Contains(toAdd))
+                    goList.Add(toAdd);
+            }
+            Selection.objects = goList.ToArray();
+        }
+
+        [MenuItem("GameObject/Selections/Deselect All", false, -10)]
+        static void DeselectAllContext()
+        {
+            Selection.objects = new Object[0];
+        }
+        #endregion
+
+        #region ParentOperations
         // ---------- Create parent ----------
         [MenuItem("GameObject/ Create Parent", true)]
         static bool ValidateCreateParentItem()
@@ -357,85 +449,6 @@ namespace QuickUtility
             
         }
 
-        [MenuItem("GameObject/ Move To Floor Level", true)]
-        static bool ValidateMoveToFloorItem()
-        {
-            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
-            if (selection == null || selection.Length == 0)
-                return false;
-            //for(int i = 0; i < selection.Length; i++)
-            //{
-            //    if(!((GameObject)selection[i]).GetComponent<Collider>())
-            //        return false;
-            //}
-            return true;
-        }
-        [MenuItem("GameObject/ Move To Floor Level", false, 0)]
-        static void MoveToFloorItem()
-        {
-            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
-            if (selection == null || selection.Length == 0)
-                return;
-            GameObject[] selectedObjects = new GameObject[selection.Length];
-            for (int i = 0; i < selection.Length; i++)
-            {
-                selectedObjects[i] = selection[i] as GameObject;
-            }
-
-            Array.Sort(selectedObjects, new SortFromHierarchyDepthComparer());
-
-            GameObject firstToMove = null;
-            for(int i = 0; i < selectedObjects.Length; i++)
-            {
-                if (!selectedObjects[i].GetComponent<Collider>())
-                    continue;
-                if (!firstToMove)
-                    firstToMove = selectedObjects[i];
-                RaycastHit hit;
-                float heightFactor = 0.0f; // if we're below the floor level, this factor will be higher to compensate the difference
-                Vector3 position = selectedObjects[i].transform.position;
-                if (Physics.Raycast(position, Vector3.down, out hit))
-                    heightFactor = 1.0f;
-                else if (Physics.Raycast(position, Vector3.up, out hit))
-                    heightFactor = 2.0f;
-                else if (Physics.Raycast(new Vector3(position.x, firstToMove.transform.position.y, position.z), Vector3.down, out hit)) // Check from the first object that has moved height
-                    heightFactor = 2.0f;
-
-                if(hit.collider != null)
-                {
-                    Undo.RecordObject(selectedObjects[i].transform, "MoveToFloor" + i);
-                    Debug.Log(hit.collider.name);
-                    selectedObjects[i].transform.position = new Vector3(selectedObjects[i].transform.position.x, (hit.point.y + selectedObjects[i].GetComponent<Collider>().bounds.extents.y * heightFactor), selectedObjects[i].transform.position.z);
-                }
-            }
-        }
-
-        class SortFromHierarchyDepthComparer : IComparer<GameObject>
-        {
-            public int Compare(GameObject x, GameObject y)
-            {
-                int xDepth = GetDepthInHierarchy(x);
-                int yDepth = GetDepthInHierarchy(y);
-                if (xDepth > yDepth)
-                    return 1;
-                else if (yDepth > xDepth)
-                    return -1;
-                else return 0;
-            }
-        }
-
-        public static int GetDepthInHierarchy(GameObject go)
-        {
-            int i = 0;
-            GameObject cursor = go; 
-            while(cursor.transform.parent != null)
-            {
-                cursor = cursor.transform.parent.gameObject;
-                i++;
-            }
-            return i;
-        }
-
         void CreateParent()
         {
             GameObject parent = new GameObject(parentName);
@@ -471,7 +484,79 @@ namespace QuickUtility
             //if (centerPivotPoint)
             //    CenterOnChildrenItem();
         }
+        #endregion
 
+        #region ContextOperations
+        [MenuItem("GameObject/ Move To Floor Level", true)]
+        static bool ValidateMoveToFloorItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return false;
+            //for(int i = 0; i < selection.Length; i++)
+            //{
+            //    if(!((GameObject)selection[i]).GetComponent<Collider>())
+            //        return false;
+            //}
+            return true;
+        }
+        [MenuItem("GameObject/ Move To Floor Level", false, 0)]
+        static void MoveToFloorItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return;
+            GameObject[] selectedObjects = new GameObject[selection.Length];
+            for (int i = 0; i < selection.Length; i++)
+            {
+                selectedObjects[i] = selection[i] as GameObject;
+            }
+
+            Array.Sort(selectedObjects, new SortFromHierarchyDepthComparer());
+
+            GameObject firstToMove = null;
+            for (int i = 0; i < selectedObjects.Length; i++)
+            {
+                if (!selectedObjects[i].GetComponent<Collider>())
+                    continue;
+                if (!firstToMove)
+                    firstToMove = selectedObjects[i];
+                RaycastHit hit;
+                float heightFactor = 0.0f; // if we're below the floor level, this factor will be higher to compensate the difference
+                Vector3 position = selectedObjects[i].transform.position;
+                if (Physics.Raycast(position, Vector3.down, out hit))
+                    heightFactor = 1.0f;
+                else if (Physics.Raycast(position, Vector3.up, out hit))
+                    heightFactor = 2.0f;
+                else if (Physics.Raycast(new Vector3(position.x, firstToMove.transform.position.y, position.z), Vector3.down, out hit)) // Check from the first object that has moved height
+                    heightFactor = 2.0f;
+
+                if (hit.collider != null)
+                {
+                    Undo.RecordObject(selectedObjects[i].transform, "MoveToFloor" + i);
+                    Debug.Log(hit.collider.name);
+                    selectedObjects[i].transform.position = new Vector3(selectedObjects[i].transform.position.x, (hit.point.y + selectedObjects[i].GetComponent<Collider>().bounds.extents.y * heightFactor), selectedObjects[i].transform.position.z);
+                }
+            }
+        }
+
+        class SortFromHierarchyDepthComparer : IComparer<GameObject>
+        {
+            public int Compare(GameObject x, GameObject y)
+            {
+                int xDepth = GetDepthInHierarchy(x);
+                int yDepth = GetDepthInHierarchy(y);
+                if (xDepth > yDepth)
+                    return 1;
+                else if (yDepth > xDepth)
+                    return -1;
+                else return 0;
+            }
+        }
+
+        #endregion
+
+        #region NonStaticUtilities
         Vector3 FindSelectionCenter()
         {
             Vector3 center = Vector3.zero;
@@ -490,6 +575,68 @@ namespace QuickUtility
             center /= goSelection.Length;
 
             return center;
+        }
+
+        GameObject FindClosestToRootSelectedGameObject()
+        {
+            if (selectedObjects == null || selectedObjects.Length == 0)
+                return null;
+            int smallestDistanceFromRoot = 10000;
+            GameObject closestObjectFromRoot = null;
+            GameObject currentObject = null;
+            int currentDistance = 0;
+            for (int i = 0; i < selectedObjects.Length; i++)
+            {
+                currentObject = selectedObjects[i];
+                currentDistance = 0;
+                while (currentObject.transform.parent != null)
+                {
+                    currentDistance++;
+                    currentObject = currentObject.transform.parent.gameObject;
+                }
+                if (currentDistance < smallestDistanceFromRoot)
+                {
+                    smallestDistanceFromRoot = currentDistance;
+                    closestObjectFromRoot = selectedObjects[i];
+                }
+            }
+
+            return closestObjectFromRoot;
+        }
+        #endregion
+
+        #region StaticUtilities
+
+        static GameObject FindClosestToRootSelectedGameObjectStatic(GameObject[] selectedObjects)
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            selectedObjects = new GameObject[selection.Length];
+            for (int i = 0; i < selection.Length; i++)
+            {
+                selectedObjects[i] = selection[i] as GameObject;
+            }
+
+            int smallestDistanceFromRoot = 10000;
+            GameObject closestObjectFromRoot = null;
+            GameObject currentObject = null;
+            int currentDistance = 0;
+            for (int i = 0; i < selectedObjects.Length; i++)
+            {
+                currentObject = selectedObjects[i];
+                currentDistance = 0;
+                while (currentObject.transform.parent != null)
+                {
+                    currentDistance++;
+                    currentObject = currentObject.transform.parent.gameObject;
+                }
+                if (currentDistance < smallestDistanceFromRoot)
+                {
+                    smallestDistanceFromRoot = currentDistance;
+                    closestObjectFromRoot = selectedObjects[i];
+                }
+            }
+
+            return closestObjectFromRoot;
         }
 
         public static Vector3 FindCenterOfChildren(GameObject go)
@@ -518,9 +665,27 @@ namespace QuickUtility
             return toReturn;
         }
 
-        void MoveToFloor()
+        public static int GetDepthInHierarchy(GameObject go)
         {
+            int i = 0;
+            GameObject cursor = go;
+            while (cursor.transform.parent != null)
+            {
+                cursor = cursor.transform.parent.gameObject;
+                i++;
+            }
+            return i;
+        }
 
+        public static GameObject[] GetGameObjectWithAllChildren(GameObject go)
+        {
+            List<GameObject> list = new List<GameObject>();
+            list.Add(go.gameObject);
+            for(int i = 0; i < go.transform.childCount; i++)
+            {
+                list.AddRange(GetGameObjectWithAllChildren(go.transform.GetChild(i).gameObject));
+            }
+            return list.ToArray();
         }
 
         public static string getMethodsOn(System.Object t)
@@ -557,6 +722,6 @@ namespace QuickUtility
             }
             return log;
         }
-
+#endregion
     }
 }
