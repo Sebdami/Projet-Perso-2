@@ -28,31 +28,25 @@ namespace QuickUtility
 
             v- Select parents
 
-            - Fix children movement (Allows to move parent without moving children when enabled)
+            v- Fix children movement (Allows to move parent without moving children when enabled)
 
             - Move objects to the floor level
 
             v- Deselect all
 
-            - Multiple Tags System ?
-
-            - Clear parent
+            v- Clear parent
 
             - Apply changes to prefab
 
             - Break prefab instance?
 
-            - Set as first / last sibling
+            - Set as first / last sibling (May be useless just use drag and drop)
         */
 
         Object obj;
-
-        GameObject selectedObject = null;
         GameObject[] selectedObjects = null;
 
         string parentName = "NewParent";
-        bool showParentTools = false;
-
 
         bool errorNoSelection = false;
         bool centerPivotPoint = true;
@@ -73,7 +67,6 @@ namespace QuickUtility
             {
                 selectedObjects[i] = selection[i] as GameObject;
             }
-            selectedObject = Selection.activeObject as GameObject;
             Repaint();
         }
 
@@ -102,11 +95,11 @@ namespace QuickUtility
             // obj = null;
             if (GUILayout.Button("Log methods"))
             {
-                getMethodsOn(obj);
+                Debug.Log(getMethodsOn(obj));
             }
             if (GUILayout.Button("Log members"))
             {
-                getMembersOf(obj);
+                Debug.Log(getMembersOf(obj));
             }
         }
 
@@ -204,46 +197,6 @@ namespace QuickUtility
             Selection.objects = new Object[0];
         }
 
-        //void SelectOnlyTopLevel()
-        //{
-        //    Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
-        //    selectedObjects = new GameObject[selection.Length];
-        //    for (int i = 0; i < selection.Length; i++)
-        //    {
-        //        selectedObjects[i] = selection[i] as GameObject;
-        //    }
-
-        //    Selection.objects = selectedObjects;
-        //}
-
-        //void SelectRoots()
-        //{
-        //    Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
-        //    selectedObjects = new GameObject[selection.Length];
-        //    for (int i = 0; i < selection.Length; i++)
-        //    {
-        //        selectedObjects[i] = ((GameObject)selection[i]).transform.root.gameObject;
-        //    }
-
-        //    Selection.objects = selectedObjects;
-        //}
-
-        //void SelectChildren()
-        //{
-        //    Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
-        //    List<GameObject> goList = new List<GameObject>();
-        //    for (int i = 0; i < selection.Length; i++)
-        //    {
-        //        Transform childTransform = ((GameObject)selection[i]).transform;
-        //        for (int j = 0; j < childTransform.transform.childCount; j++)
-        //        {
-        //            goList.Add(childTransform.GetChild(j).gameObject);
-        //        }
-        //    }
-        //    selectedObjects = goList.ToArray();
-        //    Selection.objects = selectedObjects;
-        //}
-
         static GameObject FindClosestToRootSelectedGameObjectStatic(GameObject[] selectedObjects)
         {
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
@@ -315,14 +268,6 @@ namespace QuickUtility
         [MenuItem("GameObject/ Create Parent", false, 0)]
         static void CreateParentItem(MenuCommand menuCommand)
         {
-            // Only execute once, not for each object
-            if (Selection.objects.Length > 1)
-            {
-                if (menuCommand.context != Selection.objects[0])
-                {
-                    return;
-                }
-            }
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
             if (selection == null || selection.Length == 0)
                 return;
@@ -330,6 +275,15 @@ namespace QuickUtility
             for (int i = 0; i < selection.Length; i++)
             {
                 selectedObjects[i] = selection[i] as GameObject;
+            }
+
+            // Only execute once, not for each object
+            if (selectedObjects.Length > 1)
+            {
+                if (((GameObject)menuCommand.context) != selectedObjects[0])
+                {
+                    return;
+                }
             }
 
             GameObject parent = new GameObject("Parent");
@@ -400,7 +354,86 @@ namespace QuickUtility
         [MenuItem("GameObject/ Center On.../All Children", false, 0)]
         static void CenterOnAllChildrenItem()
         {
-            EditorApplication.ExecuteMenuItem("GameObject/Center On Children");
+            
+        }
+
+        [MenuItem("GameObject/ Move To Floor Level", true)]
+        static bool ValidateMoveToFloorItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return false;
+            //for(int i = 0; i < selection.Length; i++)
+            //{
+            //    if(!((GameObject)selection[i]).GetComponent<Collider>())
+            //        return false;
+            //}
+            return true;
+        }
+        [MenuItem("GameObject/ Move To Floor Level", false, 0)]
+        static void MoveToFloorItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return;
+            GameObject[] selectedObjects = new GameObject[selection.Length];
+            for (int i = 0; i < selection.Length; i++)
+            {
+                selectedObjects[i] = selection[i] as GameObject;
+            }
+
+            Array.Sort(selectedObjects, new SortFromHierarchyDepthComparer());
+
+            GameObject firstToMove = null;
+            for(int i = 0; i < selectedObjects.Length; i++)
+            {
+                if (!selectedObjects[i].GetComponent<Collider>())
+                    continue;
+                if (!firstToMove)
+                    firstToMove = selectedObjects[i];
+                RaycastHit hit;
+                float heightFactor = 0.0f; // if we're below the floor level, this factor will be higher to compensate the difference
+                Vector3 position = selectedObjects[i].transform.position;
+                if (Physics.Raycast(position, Vector3.down, out hit))
+                    heightFactor = 1.0f;
+                else if (Physics.Raycast(position, Vector3.up, out hit))
+                    heightFactor = 2.0f;
+                else if (Physics.Raycast(new Vector3(position.x, firstToMove.transform.position.y, position.z), Vector3.down, out hit)) // Check from the first object that has moved height
+                    heightFactor = 2.0f;
+
+                if(hit.collider != null)
+                {
+                    Undo.RecordObject(selectedObjects[i].transform, "MoveToFloor" + i);
+                    Debug.Log(hit.collider.name);
+                    selectedObjects[i].transform.position = new Vector3(selectedObjects[i].transform.position.x, (hit.point.y + selectedObjects[i].GetComponent<Collider>().bounds.extents.y * heightFactor), selectedObjects[i].transform.position.z);
+                }
+            }
+        }
+
+        class SortFromHierarchyDepthComparer : IComparer<GameObject>
+        {
+            public int Compare(GameObject x, GameObject y)
+            {
+                int xDepth = GetDepthInHierarchy(x);
+                int yDepth = GetDepthInHierarchy(y);
+                if (xDepth > yDepth)
+                    return 1;
+                else if (yDepth > xDepth)
+                    return -1;
+                else return 0;
+            }
+        }
+
+        public static int GetDepthInHierarchy(GameObject go)
+        {
+            int i = 0;
+            GameObject cursor = go; 
+            while(cursor.transform.parent != null)
+            {
+                cursor = cursor.transform.parent.gameObject;
+                i++;
+            }
+            return i;
         }
 
         void CreateParent()
@@ -459,7 +492,7 @@ namespace QuickUtility
             return center;
         }
 
-        Vector3 FindCenterOfChildren(GameObject go)
+        public static Vector3 FindCenterOfChildren(GameObject go)
         {
             Vector4 toReturn = Vector4.zero;
             for (int i = 0; i < go.transform.childCount; i++)
@@ -472,7 +505,7 @@ namespace QuickUtility
             return toReturn /= toReturn.w;
         }
 
-        Vector4 FindCenterOfChildren4(GameObject go)
+        static Vector4 FindCenterOfChildren4(GameObject go)
         {
             Vector4 toReturn = Vector4.zero;
             for(int i = 0; i < go.transform.childCount; i++)
@@ -490,7 +523,7 @@ namespace QuickUtility
 
         }
 
-        static void getMethodsOn(System.Object t)
+        public static string getMethodsOn(System.Object t)
         {
             Type obj = t.GetType();
             string log = "METHODS FOR : " + obj.Name;
@@ -510,10 +543,10 @@ namespace QuickUtility
                 }
                 log += "\nFunction :" + method.Name + "(" + parameters + ")";
             }
-            Debug.Log(log);
+            return log;
         }
 
-        static void getMembersOf(System.Object t)
+        public static string getMembersOf(System.Object t)
         {
             Type obj = t.GetType();
             string log = "MEMBERS OF : " + obj.Name;
@@ -522,7 +555,7 @@ namespace QuickUtility
             {
                 log += "\nMember :" + member.Name;
             }
-            Debug.Log(log);
+            return log;
         }
 
     }
