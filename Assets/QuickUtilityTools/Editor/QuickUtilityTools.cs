@@ -324,8 +324,6 @@ namespace QuickUtility
         [MenuItem("GameObject/Selections/Select Parent", false, -10)]
         static void SelectParentsContextItem()
         {
-            if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
-                return;
             EditorApplication.ExecuteMenuItem("Window/Hierarchy");
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
             List<GameObject> goList = new List<GameObject>();
@@ -446,6 +444,36 @@ namespace QuickUtility
         [MenuItem("GameObject/ Center On.../All Children", false, 0)]
         static void CenterOnAllChildrenItem()
         {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab | SelectionMode.TopLevel);
+            if (selection == null || selection.Length == 0)
+                return;
+            for (int i = 0; i < selection.Length; i++)
+            {
+                GameObject curGo = selection[i] as GameObject;
+                if (curGo.transform.childCount == 0)
+                    continue;
+                Undo.RegisterCompleteObjectUndo(curGo.transform, "CenterOnChildren"+i);
+                Undo.FlushUndoRecordObjects();
+                GameObject go = new GameObject("Temp");
+                go.transform.position = curGo.transform.position;
+                go.transform.rotation = curGo.transform.rotation;
+                go.transform.SetParent(curGo.transform.parent);
+                go.transform.localScale = curGo.transform.localScale;
+
+                while (curGo.transform.childCount > 0)
+                {
+                    curGo.transform.GetChild(0).SetParent(go.transform);
+                }
+
+                curGo.transform.position = FindCenterOfChildren(go);
+
+                while (go.transform.childCount > 0)
+                {
+                    go.transform.GetChild(0).SetParent(curGo.transform);
+                }
+
+                DestroyImmediate(go);
+            }
             
         }
 
@@ -641,28 +669,16 @@ namespace QuickUtility
 
         public static Vector3 FindCenterOfChildren(GameObject go)
         {
-            Vector4 toReturn = Vector4.zero;
-            for (int i = 0; i < go.transform.childCount; i++)
+            Vector3 toReturn = Vector3.zero;
+
+            GameObject[] children = GetAllChildren(go);
+
+            for(int i = 0; i < children.Length; i++)
             {
-                Transform child = go.transform.GetChild(i);
-                toReturn += new Vector4(child.position.x, child.position.y, child.position.z);
-                toReturn += FindCenterOfChildren4(child.gameObject);
+                toReturn += children[i].transform.position;
             }
 
-            return toReturn /= toReturn.w;
-        }
-
-        static Vector4 FindCenterOfChildren4(GameObject go)
-        {
-            Vector4 toReturn = Vector4.zero;
-            for(int i = 0; i < go.transform.childCount; i++)
-            {
-                Transform child = go.transform.GetChild(i);
-                toReturn += new Vector4(child.position.x, child.position.y, child.position.z, 1);
-                toReturn += FindCenterOfChildren4(child.gameObject);
-            }
-
-            return toReturn;
+            return toReturn/(children.Length);
         }
 
         public static int GetDepthInHierarchy(GameObject go)
@@ -685,6 +701,16 @@ namespace QuickUtility
             {
                 list.AddRange(GetGameObjectWithAllChildren(go.transform.GetChild(i).gameObject));
             }
+            return list.ToArray();
+        }
+
+        public static GameObject[] GetAllChildren(GameObject go)
+        {
+            List<GameObject> list = new List<GameObject>();
+
+            list.AddRange(GetGameObjectWithAllChildren(go));
+            list.RemoveAt(0);
+
             return list.ToArray();
         }
 
