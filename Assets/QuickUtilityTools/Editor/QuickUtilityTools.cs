@@ -41,6 +41,8 @@ namespace QuickUtility
             - Break prefab instance?
 
             - Set as first / last sibling (May be useless just use drag and drop)
+
+            v- Replace object with prefab
         */
 
         Object obj;
@@ -50,6 +52,15 @@ namespace QuickUtility
 
         bool errorNoSelection = false;
         bool centerPivotPoint = true;
+
+        enum Tabs
+        {
+            Prefab,
+            Other
+        }
+
+        string[] tabs = new string[] { "Prefab", "Other" };
+        int selectedTab = 0;
 
         [MenuItem("Tools/Quick Utility Tools/Open Window", priority = 1)]
         static void Init()
@@ -74,15 +85,31 @@ namespace QuickUtility
         {
             if (selectedObjects == null)
                 OnSelectionChange();
+
             errorNoSelection = false;
+
             if (selectedObjects == null || selectedObjects.Length < 1)
                 errorNoSelection = true;
 
+            selectedTab = GUILayout.Toolbar(selectedTab, tabs);
+            switch((Tabs)selectedTab)
+            {
+                case Tabs.Other:
+                    OtherTab();
+                    break;
+                case Tabs.Prefab:
+                    PrefabTab();
+                    break;
+            }
+        }
+
+        void OtherTab()
+        {
             if (errorNoSelection)
                 GUI.enabled = false;
 
             string currentWindow = focusedWindow.ToString();
-            GUILayout.Label(currentWindow);
+            GUILayout.Label("Focused window: " + currentWindow);
             parentName = EditorGUILayout.TextField("New parent name", parentName);
 
             centerPivotPoint = EditorGUILayout.Toggle("Center parent pivot point", centerPivotPoint);
@@ -101,17 +128,56 @@ namespace QuickUtility
             {
                 Debug.Log(getMembersOf(obj));
             }
+        }
 
-            if(GUILayout.Button("Print children and parent"))
+
+        GameObject basePrefab;
+        bool copyScale = false;
+
+        void PrefabTab()
+        {
+            GUILayout.Label("Replace with Prefab", EditorStyles.boldLabel);
+            basePrefab = EditorGUILayout.ObjectField("Prefab", basePrefab, typeof(GameObject), false) as GameObject;
+
+            copyScale = EditorGUILayout.Toggle("Copy Scale", copyScale);
+
+            if (basePrefab == null || errorNoSelection)
+                GUI.enabled = false;
+
+            if(GUILayout.Button("Replace Selected objects with prefab"))
             {
-                for(int i = 0; i < selectedObjects.Length; i++)
-                {
-                    GameObject[] goList = GetGameObjectWithAllChildren(selectedObjects[i]);
-                    for (int j = 0; j < goList.Length; j++)
-                        Debug.Log(goList[j].name);
-                }
-                    
+                ReplaceObjects();
             }
+        }
+
+        void ReplaceObjects()
+        {
+            for(int i = 0; i < selectedObjects.Length; i++)
+            {
+                
+                GameObject tempContainer = new GameObject("TEMP");
+                while(selectedObjects[i].transform.childCount > 0)
+                {
+                    selectedObjects[i].transform.GetChild(0).SetParent(tempContainer.transform);
+                }
+
+                GameObject newObject = PrefabUtility.InstantiatePrefab(basePrefab) as GameObject;
+                Undo.RegisterCreatedObjectUndo(newObject, "NewPrefab" + i);
+                Undo.SetTransformParent(newObject.transform, selectedObjects[i].transform.parent, "NewPrefabSetParent" + i);
+                newObject.transform.SetSiblingIndex(selectedObjects[i].transform.GetSiblingIndex());
+                newObject.transform.position = selectedObjects[i].transform.position;
+                newObject.transform.rotation = selectedObjects[i].transform.rotation;
+                if(copyScale)
+                    newObject.transform.localScale = selectedObjects[i].transform.localScale;
+                while (tempContainer.transform.childCount > 0)
+                {
+                    tempContainer.transform.GetChild(0).SetParent(newObject.transform);
+                }
+                Undo.DestroyObjectImmediate(selectedObjects[i]);
+                DestroyImmediate(tempContainer);
+                selectedObjects[i] = newObject;
+            }
+            Selection.objects = selectedObjects;
         }
 
         #region SelectionHotkeyMenuItems
