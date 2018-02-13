@@ -56,10 +56,11 @@ namespace QuickUtility
         enum Tabs
         {
             Prefab,
-            Other
+            Other,
+            Help
         }
 
-        string[] tabs = new string[] { "Prefab", "Other" };
+        string[] tabs = new string[] { "Prefab", "Other", "Help" };
         int selectedTab = 0;
 
         [MenuItem("Tools/Quick Utility Tools/Open Window", priority = 1)]
@@ -100,6 +101,9 @@ namespace QuickUtility
                 case Tabs.Prefab:
                     PrefabTab();
                     break;
+                case Tabs.Help:
+                    ShowHelp();
+                    break;
             }
         }
 
@@ -128,6 +132,18 @@ namespace QuickUtility
             {
                 Debug.Log(getMembersOf(obj));
             }
+        }
+
+        void ShowHelp()
+        {
+            GUILayout.Label("Selection", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox("Select Object + immediate children : Ctrl + H", MessageType.Info);
+            EditorGUILayout.HelpBox("Select Parent : Ctrl + G", MessageType.Info);
+            EditorGUILayout.HelpBox("Select Object + all children : Ctrl + L", MessageType.Info);
+            EditorGUILayout.HelpBox("Select Top Level Objects : Ctrl + T", MessageType.Info);
+            EditorGUILayout.HelpBox("Select Root Object : Ctrl + U", MessageType.Info);
+            EditorGUILayout.HelpBox("Select Whole Objects : Ctrl + W", MessageType.Info);
+            EditorGUILayout.HelpBox("Deselect All : Ctrl + I", MessageType.Info);
         }
 
 
@@ -213,7 +229,7 @@ namespace QuickUtility
             Selection.objects = goSelect;
         }
 
-        [MenuItem("Tools/Quick Utility Tools/Selection/Select All Children Only %g")]
+        [MenuItem("Tools/Quick Utility Tools/Selection/Select All Children Only %h")]
         static void SelectChildrenOnlyItem()
         {
             if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
@@ -250,7 +266,7 @@ namespace QuickUtility
             }
             Selection.objects = goList.ToArray();
         }
-        [MenuItem("Tools/Quick Utility Tools/Selection/Select Parents %h")]
+        [MenuItem("Tools/Quick Utility Tools/Selection/Select Parents %g")]
         static void SelectParentsItem()
         {
             if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)") //The space before the name is needed
@@ -269,6 +285,34 @@ namespace QuickUtility
             Selection.objects = goList.ToArray();
         }
 
+        [MenuItem("Tools/Quick Utility Tools/Selection/Select Whole Object %w", false, -10)]
+        static void SelectWholeContextItem()
+        {
+            if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)" && EditorWindow.focusedWindow.ToString() != " (QuickUtility.QuickUtilityTools)") //The space before the name is needed
+                return;
+            EditorApplication.ExecuteMenuItem("Window/Hierarchy");
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.TopLevel | SelectionMode.ExcludePrefab);
+            GameObject[] goSelect = new GameObject[selection.Length];
+            for (int i = 0; i < selection.Length; i++)
+            {
+                goSelect[i] = selection[i] as GameObject;
+            }
+            List<GameObject> rootObjects = new List<GameObject>();
+
+            for (int i = 0; i < goSelect.Length; i++)
+            {
+                if (!rootObjects.Contains(goSelect[i].transform.root.gameObject))
+                    rootObjects.Add(goSelect[i].transform.root.gameObject);
+            }
+
+            List<GameObject> goList = new List<GameObject>();
+            for (int i = 0; i < rootObjects.Count; i++)
+            {
+                goList.AddRange(GetGameObjectWithAllChildren(rootObjects[i]));
+            }
+            Selection.objects = goList.ToArray();
+        }
+
         [MenuItem("Tools/Quick Utility Tools/Selection/Deselect All %i")]
         static void DeselectAll()
         {
@@ -277,8 +321,8 @@ namespace QuickUtility
         #endregion
 
         #region SelectionContextMenu
-        [MenuItem("GameObject/Selections/Select Whole Object", false, -10)]
-        static void SelectWholeContextItem()
+        [MenuItem("GameObject/Selections/Select Whole Object", false)]
+        static void SelectWholeItem()
         {
             if (EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneHierarchyWindow)" && EditorWindow.focusedWindow.ToString() != " (UnityEditor.SceneView)" && EditorWindow.focusedWindow.ToString() != " (QuickUtility.QuickUtilityTools)") //The space before the name is needed
                 return;
