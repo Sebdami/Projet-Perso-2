@@ -168,29 +168,23 @@ namespace QuickUtility
 
         void ReplaceObjects()
         {
-            for(int i = 0; i < selectedObjects.Length; i++)
-            {
-                
-                GameObject tempContainer = new GameObject("TEMP");
-                while(selectedObjects[i].transform.childCount > 0)
-                {
-                    selectedObjects[i].transform.GetChild(0).SetParent(tempContainer.transform);
-                }
+            Array.Sort(selectedObjects, new SortFromHierarchyDepthComparer());
 
+            for (int i = 0; i < selectedObjects.Length; i++)
+            {
                 GameObject newObject = PrefabUtility.InstantiatePrefab(basePrefab) as GameObject;
                 Undo.RegisterCreatedObjectUndo(newObject, "NewPrefab" + i);
-                Undo.SetTransformParent(newObject.transform, selectedObjects[i].transform.parent, "NewPrefabSetParent" + i);
+                newObject.transform.SetParent(selectedObjects[i].transform.parent);
                 newObject.transform.SetSiblingIndex(selectedObjects[i].transform.GetSiblingIndex());
                 newObject.transform.position = selectedObjects[i].transform.position;
                 newObject.transform.rotation = selectedObjects[i].transform.rotation;
                 if(copyScale)
                     newObject.transform.localScale = selectedObjects[i].transform.localScale;
-                while (tempContainer.transform.childCount > 0)
+                while (selectedObjects[i].transform.childCount > 0)
                 {
-                    tempContainer.transform.GetChild(0).SetParent(newObject.transform);
+                    Undo.SetTransformParent(selectedObjects[i].transform.GetChild(0), newObject.transform, "NewPrefabSetParent"+i);
                 }
                 Undo.DestroyObjectImmediate(selectedObjects[i]);
-                DestroyImmediate(tempContainer);
                 selectedObjects[i] = newObject;
             }
             Selection.objects = selectedObjects;
