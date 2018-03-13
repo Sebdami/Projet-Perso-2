@@ -43,6 +43,8 @@ namespace QuickUtility
             - Set as first / last sibling (May be useless just use drag and drop)
 
             v- Replace object with prefab
+
+            - Change Mesh Pivot Point
         */
 
         Object obj;
@@ -425,9 +427,20 @@ namespace QuickUtility
             }
             Selection.objects = goList.ToArray();
         }
+                       //\
+                      //-\\
+                     //---\\
+                    //-----\\
+                   //-------\\
+                  //BUG  HERE\\
+                 //-----------\\
+                //-------------\\
+               //_______________\\
+                //     ||      \\ 
         [MenuItem("GameObject/Selections/Select Parent", false, -10)]
         static void SelectParentsContextItem()
         {
+            //EditorApplication.ExecuteMenuItem("Tools/Quick Utility Tools/Selection/Select Parents %g");
             EditorApplication.ExecuteMenuItem("Window/Hierarchy");
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
             List<GameObject> goList = new List<GameObject>();
@@ -649,29 +662,37 @@ namespace QuickUtility
 
             Array.Sort(selectedObjects, new SortFromHierarchyDepthComparer());
 
-            GameObject firstToMove = null;
+            // First find the new positions
+            Vector3[] positions = new Vector3[selectedObjects.Length];
             for (int i = 0; i < selectedObjects.Length; i++)
             {
                 if (!selectedObjects[i].GetComponent<Collider>())
-                    continue;
-                if (!firstToMove)
-                    firstToMove = selectedObjects[i];
-                RaycastHit hit;
-                float heightFactor = 0.0f; // if we're below the floor level, this factor will be higher to compensate the difference
-                Vector3 position = selectedObjects[i].transform.position;
-                if (Physics.Raycast(position, Vector3.down, out hit))
-                    heightFactor = 1.0f;
-                else if (Physics.Raycast(position, Vector3.up, out hit))
-                    heightFactor = 2.0f;
-                else if (Physics.Raycast(new Vector3(position.x, firstToMove.transform.position.y, position.z), Vector3.down, out hit)) // Check from the first object that has moved height
-                    heightFactor = 2.0f;
-
-                if (hit.collider != null)
                 {
-                    Undo.RecordObject(selectedObjects[i].transform, "MoveToFloor" + i);
-                    Debug.Log(hit.collider.name);
-                    selectedObjects[i].transform.position = new Vector3(selectedObjects[i].transform.position.x, (hit.point.y + selectedObjects[i].GetComponent<Collider>().bounds.extents.y * heightFactor), selectedObjects[i].transform.position.z);
+                    positions[i] = selectedObjects[i].transform.position;
+                    continue;
                 }
+
+                Collider objCollider = selectedObjects[i].GetComponent<Collider>();
+                RaycastHit hit;
+                Vector3 position = selectedObjects[i].transform.position;
+                if (Physics.Raycast(position, Vector3.down, out hit)) { }
+                else if (Physics.Raycast(position, Vector3.up, out hit)) { }
+                else
+                {
+                    positions[i] = selectedObjects[i].transform.position;
+                    continue;
+                }
+
+                Vector3 newPos = selectedObjects[i].transform.position;
+                newPos.y = hit.collider.bounds.max.y + (objCollider.bounds.max.y - objCollider.bounds.center.y);
+                positions[i] = newPos;
+            }
+
+            // Then translate objects
+            for (int i = 0; i < selectedObjects.Length; i++)
+            {
+                Undo.RecordObject(selectedObjects[i].transform, "MoveToFloor" + i);
+                selectedObjects[i].transform.position = positions[i];
             }
         }
 
