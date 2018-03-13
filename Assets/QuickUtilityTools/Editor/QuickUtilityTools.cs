@@ -635,7 +635,7 @@ namespace QuickUtility
         #endregion
 
         #region ContextOperations
-        [MenuItem("GameObject/ Move To Floor Level", true)]
+        [MenuItem("GameObject/ Floor Level/Move To Floor Level", true)]
         static bool ValidateMoveToFloorItem()
         {
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
@@ -648,7 +648,7 @@ namespace QuickUtility
             //}
             return true;
         }
-        [MenuItem("GameObject/ Move To Floor Level", false, 0)]
+        [MenuItem("GameObject/ Floor Level/Move To Floor Level", false, 0)]
         static void MoveToFloorItem()
         {
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
@@ -684,7 +684,8 @@ namespace QuickUtility
                 }
 
                 Vector3 newPos = selectedObjects[i].transform.position;
-                newPos.y = hit.collider.bounds.max.y + (objCollider.bounds.max.y - objCollider.bounds.center.y);
+                
+                newPos.y = hit.collider.ClosestPoint(newPos).y + (objCollider.bounds.max.y - objCollider.bounds.center.y);
                 positions[i] = newPos;
             }
 
@@ -693,6 +694,76 @@ namespace QuickUtility
             {
                 Undo.RecordObject(selectedObjects[i].transform, "MoveToFloor" + i);
                 selectedObjects[i].transform.position = positions[i];
+            }
+        }
+
+        [MenuItem("GameObject/ Floor Level/Move And Rotate To Floor Level", true)]
+        static bool ValidateMoveRotateToFloorItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return false;
+            //for(int i = 0; i < selection.Length; i++)
+            //{
+            //    if(!((GameObject)selection[i]).GetComponent<Collider>())
+            //        return false;
+            //}
+            return true;
+        }
+        [MenuItem("GameObject/ Floor Level/Move And Rotate To Floor Level", false, 0)]
+        static void MoveRotateToFloorItem()
+        {
+            Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+            if (selection == null || selection.Length == 0)
+                return;
+            GameObject[] selectedObjects = new GameObject[selection.Length];
+            for (int i = 0; i < selection.Length; i++)
+            {
+                selectedObjects[i] = selection[i] as GameObject;
+            }
+
+            Array.Sort(selectedObjects, new SortFromHierarchyDepthComparer());
+
+            // First find the new positions
+            Vector3[] positions = new Vector3[selectedObjects.Length];
+            Quaternion[] rotations = new Quaternion[selectedObjects.Length];
+            for (int i = 0; i < selectedObjects.Length; i++)
+            {
+                if (!selectedObjects[i].GetComponentInChildren<Collider>())
+                {
+                    positions[i] = selectedObjects[i].transform.position;
+                    continue;
+                }
+
+                Collider objCollider = selectedObjects[i].GetComponentInChildren<Collider>();
+                RaycastHit hit;
+                Vector3 position = selectedObjects[i].transform.position;
+                if (Physics.Raycast(position, Vector3.down, out hit)) { }
+                else if (Physics.Raycast(position, Vector3.up, out hit)) { }
+                else
+                {
+                    positions[i] = selectedObjects[i].transform.position;
+                    continue;
+                }
+                Undo.RecordObject(selectedObjects[i].transform, "RotateToFloor" + i);
+                Vector3 forward = selectedObjects[i].transform.forward;
+                selectedObjects[i].transform.rotation = Quaternion.identity;
+                float yExtend = objCollider.bounds.extents.y;
+                selectedObjects[i].transform.rotation = Quaternion.LookRotation(forward, hit.normal);
+
+                Vector3 newPos = selectedObjects[i].transform.position;
+
+                newPos.y = hit.point.y + yExtend;
+                positions[i] = newPos;
+                
+            }
+
+            // Then translate objects
+            for (int i = 0; i < selectedObjects.Length; i++)
+            {
+                Undo.RecordObject(selectedObjects[i].transform, "MoveToFloor" + i);
+                selectedObjects[i].transform.position = positions[i];
+                
             }
         }
 
