@@ -66,10 +66,9 @@ namespace QuickUtility
                 Repaint();
                 return;
             }
-            if(selectedObject != null && selectedObject != selection[0] as GameObject)
-            {
+            if((selection[0] as GameObject) != selectedObject)
                 newPivotPoint = (selection[0] as GameObject).transform.position;
-            }
+            
             selectedObject = selection[0] as GameObject;
 
             moveCollider = HasMovableCollider(selectedObject);
@@ -101,11 +100,9 @@ namespace QuickUtility
             if (errorNoSelection || errorNoMeshFilter || errorMultiSelection)
                 return;
 
-            if (!isToolSelected && selectedObject)
-            {
-                newPivotPoint = selectedObject.transform.position;
+            if (!isToolSelected)
                 return;
-            }
+
             Vector3 oldpos = newPivotPoint;
             newPivotPoint = Handles.PositionHandle(newPivotPoint, Quaternion.identity);
 
@@ -138,7 +135,7 @@ namespace QuickUtility
             if (Tools.current != Tool.None)
                 isToolSelected = false;
 
-            if (GUILayout.Button("Click to Move Pivot Point", isToolSelected ? ToggleButtonStyleToggled : ToggleButtonStyleNormal, GUILayout.Height(50)))
+            if (GUILayout.Button("Click to Edit Pivot Point", isToolSelected ? ToggleButtonStyleToggled : ToggleButtonStyleNormal, GUILayout.Height(50)))
             {
                 if (!isToolSelected)
                     Tools.current = Tool.None;
@@ -148,21 +145,12 @@ namespace QuickUtility
             }
             //Not good, newPivotPoint should be local coordinates
             if (!isToolSelected)
-            {
                 GUI.enabled = false;
-                EditorGUILayout.Vector3Field("Pivot Point", Vector3.zero);
-                GUI.enabled = true;
-            }
-            else
-            {
-                Vector3 oldPp = newPivotPoint;
-                newPivotPoint = selectedObject.transform.localToWorldMatrix.MultiplyPoint3x4(EditorGUILayout.Vector3Field("Pivot Point", selectedObject.transform.worldToLocalMatrix.MultiplyPoint3x4(newPivotPoint)));
-                if(newPivotPoint != oldPp)
-                    SceneView.RepaintAll();
-            }
+            Vector3 oldPp = newPivotPoint;
+            newPivotPoint = selectedObject.transform.localToWorldMatrix.MultiplyPoint3x4(EditorGUILayout.Vector3Field("Pivot Point", selectedObject.transform.worldToLocalMatrix.MultiplyPoint3x4(newPivotPoint)));
+            if(newPivotPoint != oldPp)
+                SceneView.RepaintAll();
 
-            if (errorNoSelection || errorNoMeshFilter || errorMultiSelection)
-                GUI.enabled = false;
             if (selectedObject && HasMovableCollider(selectedObject))
             {
                 moveCollider = EditorGUILayout.Toggle("Move Collider", moveCollider);
