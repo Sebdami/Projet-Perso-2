@@ -64,6 +64,7 @@ namespace QuickUtility
 
         string[] tabs = new string[] { "Prefab", "Other", "Help" };
         int selectedTab = 0;
+        static int amountToBlock = 0;
 
         [MenuItem("Tools/Quick Utility Tools/Open Window", priority = 1)]
         static void Init()
@@ -427,22 +428,21 @@ namespace QuickUtility
             }
             Selection.objects = goList.ToArray();
         }
-                       //\
-                      //-\\
-                     //---\\
-                    //-----\\
-                   //-------\\
-                  //BUG  HERE\\
-                 //-----------\\
-                //-------------\\
-               //_______________\\
-                //     ||      \\ 
+
         [MenuItem("GameObject/Selections/Select Parent", false, -10)]
-        static void SelectParentsContextItem()
+        static void SelectParentsContextItem(MenuCommand menuCommand)
         {
             //EditorApplication.ExecuteMenuItem("Tools/Quick Utility Tools/Selection/Select Parents %g");
             EditorApplication.ExecuteMenuItem("Window/Hierarchy");
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
+
+            if (amountToBlock == 0)
+                amountToBlock = selection.Length - 1;
+            else
+            {
+                amountToBlock--;
+                return;
+            }
             List<GameObject> goList = new List<GameObject>();
             for (int i = 0; i < selection.Length; i++)
             {
