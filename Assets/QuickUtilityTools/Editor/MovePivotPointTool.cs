@@ -18,17 +18,11 @@ namespace QuickUtility
         bool errorMultiSelection;
         bool errorNoMeshFilter = false;
 
+        bool saveNewMesh = false;
+
         bool isToolSelected = false;
 
-        enum Tabs
-        {
-            Prefab,
-            Other,
-            Help
-        }
-
-        string[] tabs = new string[] { "Prefab", "Other", "Help" };
-        int selectedTab = 0;
+        bool moveCollider = false;
 
         [MenuItem("Tools/Quick Utility Tools/Move Pivot Point", priority = 0)]
         static void Init()
@@ -77,7 +71,9 @@ namespace QuickUtility
                 newPivotPoint = (selection[0] as GameObject).transform.position;
             }
             selectedObject = selection[0] as GameObject;
-            
+
+            moveCollider = HasMovableCollider(selectedObject);
+
             Repaint();
         }
 
@@ -96,18 +92,27 @@ namespace QuickUtility
             // When the window is destroyed, remove the delegate
             // so that it will no longer do any drawing.
             SceneView.onSceneGUIDelegate -= this.OnSceneGUI;
+            if (isToolSelected)
+                Tools.current = Tool.Move;
         }
 
         void OnSceneGUI(SceneView sceneView)
         {
-            if (errorNoSelection || errorNoMeshFilter || errorMultiSelection || !isToolSelected)
+            if (errorNoSelection || errorNoMeshFilter || errorMultiSelection)
                 return;
 
+            if (!isToolSelected && selectedObject)
+            {
+                newPivotPoint = selectedObject.transform.position;
+                return;
+            }
+            Vector3 oldpos = newPivotPoint;
             newPivotPoint = Handles.PositionHandle(newPivotPoint, Quaternion.identity);
-            // Do your drawing here using Handles.
-            Handles.BeginGUI();
-            // Do your drawing here using GUI.
-            Handles.EndGUI();
+
+            if (newPivotPoint != oldpos)
+                Repaint();
+
+            Handles.DrawWireCube(newPivotPoint, new Vector3(.125f, .125f, .125f));
         }
 
         void OnGUI()
@@ -128,10 +133,12 @@ namespace QuickUtility
                 GUI.enabled = false;
             }
 
+            if (!selectedObject)
+                return;
             if (Tools.current != Tool.None)
                 isToolSelected = false;
 
-            if (GUILayout.Button("Move Pivot Point", isToolSelected ? ToggleButtonStyleToggled : ToggleButtonStyleNormal))
+            if (GUILayout.Button("Click to Move Pivot Point", isToolSelected ? ToggleButtonStyleToggled : ToggleButtonStyleNormal, GUILayout.Height(50)))
             {
                 if (!isToolSelected)
                     Tools.current = Tool.None;
@@ -139,30 +146,109 @@ namespace QuickUtility
                     Tools.current = Tool.Move;
                 isToolSelected = !isToolSelected;
             }
+            //Not good, newPivotPoint should be local coordinates
+            if (!isToolSelected)
+            {
+                GUI.enabled = false;
+                EditorGUILayout.Vector3Field("Pivot Point", Vector3.zero);
+                GUI.enabled = true;
+            }
+            else
+            {
+                Vector3 oldPp = newPivotPoint;
+                newPivotPoint = selectedObject.transform.localToWorldMatrix.MultiplyPoint3x4(EditorGUILayout.Vector3Field("Pivot Point", selectedObject.transform.worldToLocalMatrix.MultiplyPoint3x4(newPivotPoint)));
+                if(newPivotPoint != oldPp)
+                    SceneView.RepaintAll();
+            }
 
-            if (GUILayout.Button("Apply new pivot point"))
+            if (errorNoSelection || errorNoMeshFilter || errorMultiSelection)
+                GUI.enabled = false;
+            if (selectedObject && HasMovableCollider(selectedObject))
+            {
+                moveCollider = EditorGUILayout.Toggle("Move Collider", moveCollider);
+            }
+
+            saveNewMesh = EditorGUILayout.Toggle("Save Modified Mesh", saveNewMesh);
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Apply new pivot point", GUILayout.Width(200), GUILayout.Height(25)))
             {
                 ApplyPivotPoint();
             }
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
         }
 
         void ApplyPivotPoint()
         {
-            Undo.RecordObject(selectedObject.GetComponent<MeshFilter>(), "Change pivot Point");
+            Undo.RecordObject(selectedObject.GetComponent<MeshFilter>(), "Change pivot point");
             MeshFilter mf = selectedObject.GetComponent<MeshFilter>();
+            Mesh oldMesh = mf.sharedMesh;
             Mesh newMesh = (Mesh)Instantiate(mf.sharedMesh);
 
             List<Vector3> vertices = new List<Vector3>();
             newMesh.GetVertices(vertices);
             Vector3 translationVector = -selectedObject.transform.worldToLocalMatrix.MultiplyPoint3x4(newPivotPoint);
-            Debug.Log(newPivotPoint);
             for(int i = 0; i < vertices.Count; i++)
             {
                 vertices[i] += translationVector;
             }
             newMesh.SetVertices(vertices);
+
+            if (saveNewMesh)
+            {
+                string filePath = EditorUtility.SaveFilePanelInProject("Save modified mesh as asset", oldMesh.name + "_new", "asset", "");
+                if (filePath != string.Empty)
+                {
+                    filePath = filePath.Remove(filePath.LastIndexOf('.'));
+                    filePath += ".asset";
+                    AssetDatabase.CreateAsset(newMesh, filePath);
+                    AssetDatabase.SaveAssets();
+                }
+            }
+
             mf.sharedMesh = newMesh;
-            selectedObject.transform.position = newPivotPoint;
+            MoveOnlyParentWithUndo(selectedObject, newPivotPoint);
+            if(moveCollider)
+            {
+                Undo.RecordObject(selectedObject.GetComponent<Collider>(), "Change pivot point move collider");
+                if (selectedObject.GetComponent<BoxCollider>())
+                {
+                    selectedObject.GetComponent<BoxCollider>().center += translationVector;
+                }
+                if (selectedObject.GetComponent<SphereCollider>())
+                {
+                    selectedObject.GetComponent<SphereCollider>().center += translationVector;
+                }
+                if (selectedObject.GetComponent<CapsuleCollider>())
+                {
+                    selectedObject.GetComponent<CapsuleCollider>().center += translationVector;
+                }
+            }
+            
+            isToolSelected = false;
+            Tools.current = Tool.Move;
+        }
+
+        void MoveOnlyParentWithUndo(GameObject go, Vector3 newPosition)
+        {
+            GameObject temp = new GameObject("temp");
+            while (go.transform.childCount > 0)
+            {
+                Undo.RecordObject(selectedObject.transform.GetChild(0), "Change pivot point move object child");
+                go.transform.GetChild(0).SetParent(temp.transform);
+            }
+            Undo.RecordObject(selectedObject.transform, "Change pivot point move object");
+            go.transform.position = newPosition;
+
+            while (temp.transform.childCount > 0)
+                temp.transform.GetChild(0).SetParent(go.transform);
+            DestroyImmediate(temp);
+        }
+
+        bool HasMovableCollider(GameObject obj)
+        {
+            return obj.GetComponent<BoxCollider>() || obj.GetComponent<SphereCollider>() || obj.GetComponent<CapsuleCollider>();
         }
     }
 }

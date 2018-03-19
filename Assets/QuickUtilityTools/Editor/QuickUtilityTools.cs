@@ -726,7 +726,6 @@ namespace QuickUtility
 
             // First find the new positions
             Vector3[] positions = new Vector3[selectedObjects.Length];
-            Quaternion[] rotations = new Quaternion[selectedObjects.Length];
             for (int i = 0; i < selectedObjects.Length; i++)
             {
                 if (!selectedObjects[i].GetComponentInChildren<Collider>())
