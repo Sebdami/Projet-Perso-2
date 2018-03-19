@@ -375,7 +375,7 @@ namespace QuickUtility
             GameObject[] goSelect = new GameObject[selection.Length];
             for (int i = 0; i < selection.Length; i++)
             {
-                goSelect[i] = ((GameObject)selection[i]).transform.root.gameObject;
+                goSelect[i] = ((GameObject)selection[i]);
             }
             List<GameObject> goList = new List<GameObject>();
 
