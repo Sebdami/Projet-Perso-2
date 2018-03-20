@@ -16,8 +16,6 @@ namespace QuickUtility
 
             - Mirror movements between 2 objects (if you move the right side object to the right, move the left side object to the left...) on an axis, or on a plane
 
-            - Hide some objects in editor view (Special button for canvases)
-
             v- Create a new shared parent for the selected objects
 
             o- Recenter parent from children positions
@@ -36,15 +34,9 @@ namespace QuickUtility
 
             v- Clear parent
 
-            - Apply changes to prefab
-
-            - Break prefab instance?
-
-            - Set as first / last sibling (May be useless just use drag and drop)
-
             v- Replace object with prefab
 
-            - Change Mesh Pivot Point
+            v- Change Mesh Pivot Point
         */
 
         Object obj;
@@ -496,7 +488,7 @@ namespace QuickUtility
             GameObject parent = new GameObject("Parent");
 
             Undo.RegisterCreatedObjectUndo(parent, "CreatedParent");
-            GameObject closestToRoot = FindClosestToRootSelectedGameObjectStatic(selectedObjects);
+            GameObject closestToRoot = FindClosestToRootGameObjectStatic(selectedObjects);
             parent.transform.SetParent(closestToRoot.transform.parent);
             parent.transform.position = selectedObjects[0].transform.position;
             parent.transform.SetSiblingIndex(closestToRoot.transform.GetSiblingIndex());
@@ -675,9 +667,10 @@ namespace QuickUtility
                 Collider objCollider = selectedObjects[i].GetComponent<Collider>();
                 RaycastHit hit;
                 Vector3 position = selectedObjects[i].transform.position;
-                if (Physics.Raycast(position, Vector3.down, out hit)) { }
-                else if (Physics.Raycast(position, Vector3.up, out hit)) { }
-                else
+                //if (Physics.Raycast(position, Vector3.down, out hit)) { }
+                //else if (Physics.Raycast(position, Vector3.up, out hit)) { }
+
+                if (!Physics.Raycast(position, Vector3.down, out hit))
                 {
                     positions[i] = selectedObjects[i].transform.position;
                     continue;
@@ -833,22 +826,22 @@ namespace QuickUtility
 
         #region StaticUtilities
 
-        static GameObject FindClosestToRootSelectedGameObjectStatic(GameObject[] selectedObjects)
+        static GameObject FindClosestToRootGameObjectStatic(GameObject[] gameObjects)
         {
             Object[] selection = Selection.GetFiltered(typeof(GameObject), SelectionMode.ExcludePrefab);
-            selectedObjects = new GameObject[selection.Length];
+            gameObjects = new GameObject[selection.Length];
             for (int i = 0; i < selection.Length; i++)
             {
-                selectedObjects[i] = selection[i] as GameObject;
+                gameObjects[i] = selection[i] as GameObject;
             }
 
             int smallestDistanceFromRoot = 10000;
             GameObject closestObjectFromRoot = null;
             GameObject currentObject = null;
             int currentDistance = 0;
-            for (int i = 0; i < selectedObjects.Length; i++)
+            for (int i = 0; i < gameObjects.Length; i++)
             {
-                currentObject = selectedObjects[i];
+                currentObject = gameObjects[i];
                 currentDistance = 0;
                 while (currentObject.transform.parent != null)
                 {
@@ -858,7 +851,7 @@ namespace QuickUtility
                 if (currentDistance < smallestDistanceFromRoot)
                 {
                     smallestDistanceFromRoot = currentDistance;
-                    closestObjectFromRoot = selectedObjects[i];
+                    closestObjectFromRoot = gameObjects[i];
                 }
             }
 
